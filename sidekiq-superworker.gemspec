@@ -12,7 +12,7 @@ Gem::Specification.new do |s|
   s.version       = Sidekiq::Superworker::VERSION
   s.license       = 'MIT'
 
-  s.add_dependency 'sidekiq', '>= 2.1.0'
+  s.add_dependency 'sidekiq', '>= 2.16.0'
   s.add_dependency 'activerecord-import'
   
   s.add_development_dependency 'rails'

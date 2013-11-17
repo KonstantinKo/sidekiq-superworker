@@ -1,7 +1,7 @@
 # Allow a job's JID to be specified in Sidekiq::Client#push
 module Sidekiq
   class Client
-    class << self
+    private
       alias_method :original_normalize_item, :normalize_item
 
       def normalize_item(item)
@@ -9,6 +9,5 @@ module Sidekiq
         normalized_item['jid'] = item['jid'] if item['jid'].present?
         normalized_item
       end
-    end
   end
 end
