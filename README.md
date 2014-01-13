@@ -140,6 +140,18 @@ end
 MyBatchSuperworker.perform_async([30, 31, 32, 33, 34, 35])
 ```
 
+You can also pass arguments from superworker to batch subworkers, if you declare them in `batch` block's arguments before the array on which to iterate. The following will run Worker1 with additional arguments for each user ID:
+
+```ruby
+Superworker.create(:MyBatchSuperworkerWithArgs, :user_ids, :title, :message) do
+  batch title: :title, message: :message, user_ids: :user_id do
+    Worker1 :user_id, :title, :message
+  end
+end
+
+MyBatchSuperworkerWithArgs.perform_async([30, 31, 32, 33], 'Hello', 'world')
+```
+
 Grouping jobs into batches greatly improves your ability to audit them and determine when batches have finished.
 
 ### Superjob Names

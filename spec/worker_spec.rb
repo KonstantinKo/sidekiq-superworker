@@ -35,6 +35,13 @@ describe Sidekiq::Superworker::Worker do
         Worker2 :user_id
       end
     end
+    
+    # For testing batch blocks with additional arguments
+    Sidekiq::Superworker::Worker.create(:BatchArgsSuperworker, :title, :message, :user_ids) do
+      batch title: :title, message: :message, user_ids: :user_id do
+        Worker1 :title, :message, :user_id
+      end
+    end
 
     # For testing empty arguments
     Sidekiq::Superworker::Worker.create(:EmptyArgumentsSuperworker) do
@@ -143,6 +150,81 @@ describe Sidekiq::Superworker::Worker do
              :arg_keys=>[:user_id],
              :arg_values=>[101],
              :status=>"initialized",
+             :descendants_are_complete=>false}}
+
+        record_hashes = subjobs_to_indexed_hash(Sidekiq::Superworker::Subjob.all)
+        record_hashes.should have(expected_record_hashes.length).items
+        record_hashes.each do |subjob_id, record_hash|
+          expected_record_hashes[subjob_id].should == record_hash
+        end
+      end
+    end
+
+    context 'batch superworker with args' do
+      before :all do 
+        BatchArgsSuperworker.perform_async('hello', 'world', [100, 101])
+      end
+
+      after :all do
+        clean_datastores
+      end
+
+      it 'creates the correct Subjob records' do
+        expected_record_hashes =
+          {1=>
+            {:subjob_id=>1,
+             :parent_id=>nil,
+             :children_ids=>[2, 4],
+             :next_id=>nil,
+             :subworker_class=>"batch",
+             :superworker_class=>"BatchArgsSuperworker",
+             :arg_keys=>[{:title=>:title, :message=>:message, :user_ids=>:user_id}],
+             :arg_values=>[{:title=>:title, :message=>:message, :user_ids=>:user_id}],
+             :status=>"running",
+             :descendants_are_complete=>false},
+           2=>
+            {:subjob_id=>2,
+             :parent_id=>1,
+             :children_ids=>nil,
+             :next_id=>nil,
+             :subworker_class=>"batch_child",
+             :superworker_class=>"BatchArgsSuperworker",
+             :arg_keys=>[:title, :message, :user_id],
+             :arg_values=>[100, 'hello', 'world'],
+             :status=>"running",
+             :descendants_are_complete=>false},
+           3=>
+            {:subjob_id=>3,
+             :parent_id=>2,
+             :children_ids=>nil,
+             :next_id=>nil,
+             :subworker_class=>"Worker1",
+             :superworker_class=>"BatchArgsSuperworker",
+             :arg_keys=>[:title, :message, :user_id],
+             :arg_values=>[100, 'hello', 'world'],
+             :status=>"queued",
+             :descendants_are_complete=>false},
+           4=>
+            {:subjob_id=>4,
+             :parent_id=>1,
+             :children_ids=>nil,
+             :next_id=>nil,
+             :subworker_class=>"batch_child",
+             :superworker_class=>"BatchArgsSuperworker",
+             :arg_keys=>[:title, :message, :user_id],
+             :arg_values=>[101, 'hello', 'world'],
+             :status=>"running",
+             :descendants_are_complete=>false},
+           5=>
+            {:subjob_id=>5,
+             :parent_id=>4,
+             :children_ids=>nil,
+             :next_id=>nil,
+             :subworker_class=>"Worker1",
+             :superworker_class=>"BatchArgsSuperworker",
+             :arg_keys=>[:title, :message, :user_id],
+             :arg_values=>[101, 'hello', 'world'],
+             :status=>"queued",
              :descendants_are_complete=>false}}
 
         record_hashes = subjobs_to_indexed_hash(Sidekiq::Superworker::Subjob.all)
